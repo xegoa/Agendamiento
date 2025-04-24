@@ -1,0 +1,49 @@
+openapi: 3.0.1
+info:
+  title: Agendamiento Médico
+  version: '1.0.0'
+servers:
+  - url: https://tkqon0owc9.execute-api.us-east-1.amazonaws.com/Prod
+paths:
+  /crearCita:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentDTO'
+      responses:
+        '200': { description: Cita creada }
+  /citasMedicas/{insuredId}:
+    get:
+      parameters:
+        - in: path
+          name: insuredId
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Appointment'
+components:
+  schemas:
+    CreateAppointmentDTO:
+      type: object
+      required: [insuredId, scheduleId, countryISO]
+      properties:
+        insuredId: { type: string }
+        scheduleId: { type: integer }
+        countryISO: { type: string }
+    Appointment:
+      type: object
+      properties:
+        id: { type: string }
+        insuredId: { type: string }
+        scheduleId: { type: integer }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }

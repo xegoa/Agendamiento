@@ -5,7 +5,7 @@ import { IAppointmentRepository } from '../../domain/interfaces/IAppintmentRepos
 import { dynamoClient } from './DynamoConfig.mjs';
 
 export class DynamoAppointmentRepository implements IAppointmentRepository {
-  private table = process.env.CITAS_TABLE_NAME;
+  private table = process.env.CITAS_TABLE_NAME || 'citas';
 
   async save(appointment: Appointment): Promise<void> {
     await dynamoClient.send(new PutItemCommand({

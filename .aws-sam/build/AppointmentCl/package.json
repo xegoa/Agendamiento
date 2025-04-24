@@ -4,15 +4,22 @@
   "type": "module",
   "description": "Reto Indra",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --detectOpenHandles",
+    "deploy": "sam deploy --guided"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/aws-lambda": "~8",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.14.1",
     "esbuild": "^0.25.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {

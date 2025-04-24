@@ -14,7 +14,7 @@ export const handler = async (event: any) => {
     if (!dto.insuredId) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ message: `Falta parametro: ${JSON.stringify(event)}` }),
+        body: JSON.stringify({ message: `Falta parametro` }),
       };
     }
 
