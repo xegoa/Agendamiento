@@ -23,13 +23,11 @@ export class DynamoAppointmentRepository implements IAppointmentRepository {
   }
 
   async findByInsuredId(insuredId: string): Promise<Appointment[]> {
-    console.log('Buscando insuredId =', insuredId, 'en tabla', this.table);
     const resp = await dynamoClient.send(new ScanCommand({
       TableName: this.table,
       FilterExpression: 'insuredId = :i',
       ExpressionAttributeValues: { ':i': { S: insuredId } }
     }));
-    console.log('Buscando insuredId =', insuredId, 'en tabla', this.table);
     return (resp.Items || []).map(item => new Appointment(
       item.id.S!, item.insuredId.S!, Number(item.scheduleId.N!), item.status.S! as any,
       item.countryISO.S! as any, Number(item.createdAt.N!), item.completedAt?.N ? Number(item.completedAt.N) : undefined,
