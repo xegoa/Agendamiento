@@ -1,0 +1,23 @@
+{
+  "name": "agendamiento",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Reto Indra",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "~8",
+    "@types/node": "^22.14.1",
+    "esbuild": "^0.25.3",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.788.0",
+    "@aws-sdk/client-eventbridge": "^3.790.0",
+    "@aws-sdk/client-sns": "^3.787.0"
+  }
+}

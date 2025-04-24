@@ -1,0 +1,12 @@
+{
+    "httpMethod": "GET",
+    "path": "/citasMedicas/00001",
+    "pathParameters": {
+      "insuredId": "00001"
+    },
+    "headers": {},
+    "queryStringParameters": null,
+    "body": null,
+    "isBase64Encoded": false
+  }
+  

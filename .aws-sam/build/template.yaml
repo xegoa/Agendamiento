@@ -1,0 +1,278 @@
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    MemorySize: 1024
+    Tracing: Active
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: CitasAPI
+      StageName: Prod
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowOrigin: '''*'''
+        AllowMethods: '''GET,POST,OPTIONS'''
+        AllowHeaders: '''Content-Type'''
+  citas:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: citas
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+  TopicPeru:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: SNSTopicPE.fifo
+      FifoTopic: true
+      ContentBasedDeduplication: true
+  TopicChile:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: SNSTopicCL.fifo
+      FifoTopic: true
+      ContentBasedDeduplication: true
+  SQSPE:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: SQSPE.fifo
+      FifoQueue: true
+  SQSCL:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: SQSCL.fifo
+      FifoQueue: true
+  SubscriptionPE:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: TopicPeru
+      Protocol: sqs
+      Endpoint:
+        Fn::GetAtt:
+        - SQSPE
+        - Arn
+      RawMessageDelivery: true
+  SubscriptionCL:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn:
+        Ref: TopicChile
+      Protocol: sqs
+      Endpoint:
+        Fn::GetAtt:
+        - SQSCL
+        - Arn
+      RawMessageDelivery: true
+  SQSPEPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: SQSPE
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: sns.amazonaws.com
+          Action: sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - SQSPE
+            - Arn
+  SQSCLPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: SQSCL
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: sns.amazonaws.com
+          Action: sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - SQSCL
+            - Arn
+  SQSConfirm:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: SQSConfirm.fifo
+      FifoQueue: true
+  SQSConfirmPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+      - Ref: SQSConfirm
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: events.amazonaws.com
+          Action: sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - SQSConfirm
+            - Arn
+  ConfirmRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: AppointmentConfirmRule
+      EventPattern:
+        source:
+        - appointments.service
+        detail-type:
+        - AppointmentConfirmed
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - SQSConfirm
+          - Arn
+        Id: ConfirmTarget
+        SqsParameters:
+          MessageGroupId: confirmations
+  Appointment:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Appointment
+      Handler: dist/presentation/lambda/appointment/index.handler
+      Events:
+        CrearCita:
+          Type: Api
+          Properties:
+            Path: /crearCita
+            Method: POST
+            RestApiId:
+              Ref: Api
+        citasMedicas:
+          Type: Api
+          Properties:
+            Path: /citasMedicas
+            Method: GET
+            RestApiId:
+              Ref: Api
+        Confirmacion:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - SQSConfirm
+              - Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          CITAS_TABLE_NAME:
+            Ref: citas
+          SNS_TOPIC_PE_ARN:
+            Ref: TopicPeru
+          SNS_TOPIC_CL_ARN:
+            Ref: TopicChile
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: citas
+      - Statement:
+          Effect: Allow
+          Action:
+          - sns:Publish
+          Resource:
+          - Ref: TopicPeru
+          - Ref: TopicChile
+      - Statement:
+          Effect: Allow
+          Action:
+          - sqs:ReceiveMessage
+          - sqs:DeleteMessage
+          - sqs:GetQueueAttributes
+          Resource:
+            Fn::GetAtt:
+            - SQSConfirm
+            - Arn
+      - Statement:
+          Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource: '*'
+      CodeUri: Appointment
+    Metadata:
+      SamResourceId: Appointment
+  AppointmentPe:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: AppointmentPe
+      Handler: dist/presentation/lambda/appointment_pe/index.handler
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - SQSPE
+              - Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: default
+      Policies:
+      - Statement:
+          Effect: Allow
+          Action:
+          - sqs:ReceiveMessage
+          - sqs:DeleteMessage
+          - sqs:GetQueueAttributes
+          Resource:
+            Fn::GetAtt:
+            - SQSPE
+            - Arn
+      - Statement:
+          Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource: '*'
+      CodeUri: AppointmentPe
+    Metadata:
+      SamResourceId: AppointmentPe
+  AppointmentCl:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: AppointmentCl
+      Handler: dist/presentation/lambda/appointment_cl/index.handler
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - SQSCL
+              - Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: default
+      Policies:
+      - Statement:
+          Effect: Allow
+          Action:
+          - sqs:ReceiveMessage
+          - sqs:DeleteMessage
+          - sqs:GetQueueAttributes
+          Resource:
+            Fn::GetAtt:
+            - SQSCL
+            - Arn
+      - Statement:
+          Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource: '*'
+      CodeUri: AppointmentCl
+    Metadata:
+      SamResourceId: AppointmentCl

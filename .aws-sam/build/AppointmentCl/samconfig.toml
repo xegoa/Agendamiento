@@ -1,0 +1,10 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "AgendaMedicaIndra"
+region = "us-east-1"
+
+[default.sync.parameters]
+template_file = "c:\\Users\\xegoa\\awsProject\\Agendamiento\\api.yml"
+dependency_layer = false
+watch = true
